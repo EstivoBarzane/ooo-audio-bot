@@ -257,11 +257,11 @@ bot.on('message:text', async (ctx) => {
         await ctx.reply('Mandami i tuoi file audio!');
       } else {
         const actionKeyboard = new InlineKeyboard()
-          .text('📁  Carico un altro file  📁', 'action:another')
+          .text('Carico un altro file', 'action:another')
           .row()
-          .text('📝  Aggiungo una nota  📝', 'action:add_note')
+          .text('Aggiungo una nota', 'action:add_note')
           .row()
-          .text('✅  Finito!  ✅', 'action:done');
+          .text('Finito!', 'action:done');
         
         await ctx.reply(
           `Hai caricato ${ctx.session.uploadedFiles.length} file audio.`,
@@ -429,11 +429,11 @@ async function handleAudioUpload(ctx) {
     await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
     
     const actionKeyboard = new InlineKeyboard()
-      .text('📁  Carico un altro file  📁', 'action:another')
+      .text('Carico un altro file', 'action:another')
       .row()
-      .text('📝  Aggiungo una nota  📝', 'action:add_note')
+      .text('Aggiungo una nota', 'action:add_note')
       .row()
-      .text('✅  Finito!  ✅', 'action:done');
+      .text('Finito!', 'action:done');
     
     await ctx.reply(
       `Hai caricato ${ctx.session.uploadedFiles.length} file audio.`,
