@@ -242,14 +242,39 @@ bot.on('message:text', async (ctx) => {
     case 'awaiting_notes':
       // Raccoglie note testuali
       ctx.session.notes = text;
-      await completeSession(ctx);
+      await ctx.reply('Grazie!');
+      await completeSession(ctx, true); // true = silent mode
       break;
 
     case 'awaiting_audio':
-      await ctx.reply(
-        'Mandami i file audio!\n\n' +
-        'Quando hai finito, scrivi /done'
-      );
+      // Check se l'utente vuole aggiungere note
+      const lowerText = text.toLowerCase();
+      if (lowerText.includes('nota') || lowerText.includes('note') || lowerText.includes('aggiung')) {
+        if (ctx.session.uploadedFiles.length === 0) {
+          await ctx.reply('Prima carica almeno un file audio.');
+          return;
+        }
+        ctx.session.step = 'awaiting_notes';
+        await ctx.reply('Scrivi le tue note, oppure invia un messaggio vocale.');
+        return;
+      }
+      
+      // Altrimenti ricorda di caricare audio
+      if (ctx.session.uploadedFiles.length === 0) {
+        await ctx.reply('Mandami i tuoi file audio!');
+      } else {
+        const actionKeyboard = new InlineKeyboard()
+          .text('📁  Carico un altro file  📁', 'action:another')
+          .row()
+          .text('📝  Aggiungo una nota  📝', 'action:add_note')
+          .row()
+          .text('✅  Finito!  ✅', 'action:done');
+        
+        await ctx.reply(
+          `Hai caricato ${ctx.session.uploadedFiles.length} file audio.`,
+          { reply_markup: actionKeyboard }
+        );
+      }
       break;
 
     default:
@@ -276,8 +301,7 @@ bot.on('callback_query:data', async (ctx) => {
     
     await ctx.reply(
       'Perfetto! Ora mandami i tuoi file audio.\n\n' +
-      'Puoi inviare file audio, messaggi vocali, o video note.\n' +
-      'Quando hai finito, scrivi /done'
+      'Puoi inviare file audio, messaggi vocali, o video note.'
     );
   }
   
@@ -286,14 +310,33 @@ bot.on('callback_query:data', async (ctx) => {
     await ctx.answerCallbackQuery();
     await ctx.editMessageText('Aggiungi note o considerazioni:');
     await ctx.reply(
-      'Scrivi le tue note, oppure invia un messaggio vocale.\n' +
-      'Quando hai finito, scrivi /skip per saltare.'
+      'Scrivi le tue note, oppure invia un messaggio vocale.'
     );
   }
   
   if (data === 'notes:no') {
     await ctx.answerCallbackQuery();
     await ctx.editMessageText('Nessuna nota aggiunta.');
+    await completeSession(ctx);
+  }
+  
+  // Nuovi bottoni azione dopo upload file
+  if (data === 'action:another') {
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(`Hai caricato ${ctx.session.uploadedFiles.length} file audio. In attesa di altri...`);
+    // Resta in awaiting_audio, l'utente manderà altri file
+  }
+  
+  if (data === 'action:add_note') {
+    ctx.session.step = 'awaiting_notes';
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(`Hai caricato ${ctx.session.uploadedFiles.length} file audio.`);
+    await ctx.reply('Scrivi le tue note, oppure invia un messaggio vocale.');
+  }
+  
+  if (data === 'action:done') {
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(`Hai caricato ${ctx.session.uploadedFiles.length} file audio.`);
     await completeSession(ctx);
   }
 });
@@ -392,12 +435,19 @@ async function handleAudioUpload(ctx) {
       filePath: filePath
     });
 
-    // Conferma
-    await ctx.api.editMessageText(
-      ctx.chat.id,
-      statusMsg.message_id,
-      `File caricato! (${ctx.session.uploadedFiles.length} totali)\n\n` +
-      'Puoi inviarne altri o scrivere /done per completare.'
+    // Conferma con bottoni
+    await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
+    
+    const actionKeyboard = new InlineKeyboard()
+      .text('📁  Carico un altro file  📁', 'action:another')
+      .row()
+      .text('📝  Aggiungo una nota  📝', 'action:add_note')
+      .row()
+      .text('✅  Finito!  ✅', 'action:done');
+    
+    await ctx.reply(
+      `Hai caricato ${ctx.session.uploadedFiles.length} file audio.`,
+      { reply_markup: actionKeyboard }
     );
 
     // Check storage alert
@@ -447,11 +497,11 @@ async function handleNotesAudio(ctx) {
     await ctx.api.editMessageText(
       ctx.chat.id,
       statusMsg.message_id,
-      'Nota vocale salvata!'
+      'Grazie!'
     );
     
-    // Completa sessione
-    await completeSession(ctx);
+    // Completa sessione in silent mode
+    await completeSession(ctx, true);
     
   } catch (error) {
     console.error('Notes audio error:', error);
@@ -463,13 +513,15 @@ async function handleNotesAudio(ctx) {
 // COMPLETAMENTO SESSIONE
 // ============================================
 
-async function completeSession(ctx) {
+async function completeSession(ctx, silent = false) {
   const filesCount = ctx.session.uploadedFiles.length;
   
-  await ctx.reply(
-    `Perfetto! Hai caricato ${filesCount} file audio.\n\n` +
-    'Grazie per il tuo contributo!'
-  );
+  if (!silent) {
+    await ctx.reply(
+      `Perfetto! Hai caricato ${filesCount} file audio.\n\n` +
+      'Grazie per il tuo contributo!'
+    );
+  }
   
   // Notifica admin completamento
   await notifyAdmin(ctx, 'completed');
