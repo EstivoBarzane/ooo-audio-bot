@@ -77,10 +77,7 @@ bot.on('message:text', async (ctx, next) => {
     ctx.session.notes = null;
     ctx.session.notesAudioPath = null;
     
-    await ctx.reply(
-      'Ciao! Sono VOX, il bot OOO per la raccolta audio.\n\n' +
-      'Come ti chiami?'
-    );
+    await ctx.reply('Sono pronto a caricare l\'audio. Il tuo nome?');
     return;
   }
   
@@ -101,10 +98,7 @@ bot.command('start', async (ctx) => {
   ctx.session.notes = null;
   ctx.session.notesAudioPath = null;
 
-  await ctx.reply(
-    'Ciao! Sono VOX, il bot OOO per la raccolta audio.\n\n' +
-    'Come ti chiami?'
-  );
+  await ctx.reply('Sono pronto a caricare l\'audio. Il tuo nome?');
 });
 
 // /cancel - Annulla operazione
@@ -216,7 +210,7 @@ bot.on('message:text', async (ctx) => {
     case 'awaiting_name':
       ctx.session.name = text;
       ctx.session.step = 'awaiting_email';
-      await ctx.reply(`Piacere ${ctx.session.name}! Qual e la tua email?`);
+      await ctx.reply('La tua email?');
       break;
 
     case 'awaiting_email':
@@ -227,14 +221,13 @@ bot.on('message:text', async (ctx) => {
       ctx.session.email = text.toLowerCase();
       ctx.session.step = 'awaiting_location';
       
-      // Mostra bottoni location
+      // Mostra bottoni location (uno sotto l'altro)
       const keyboard = new InlineKeyboard();
-      LOCATIONS.forEach((loc, i) => {
-        keyboard.text(loc, `location:${loc}`);
-        if ((i + 1) % 2 === 0) keyboard.row();
+      LOCATIONS.forEach((loc) => {
+        keyboard.text(loc, `location:${loc}`).row();
       });
 
-      await ctx.reply('Da quale location ci scrivi?', {
+      await ctx.reply('Location?', {
         reply_markup: keyboard
       });
       break;
@@ -299,10 +292,7 @@ bot.on('callback_query:data', async (ctx) => {
       parse_mode: 'Markdown' 
     });
     
-    await ctx.reply(
-      'Perfetto! Ora mandami i tuoi file audio.\n\n' +
-      'Puoi inviare file audio, messaggi vocali, o video note.'
-    );
+    await ctx.reply('Puoi inviare file audio, messaggi vocali o note testuali.');
   }
   
   if (data === 'notes:yes') {
