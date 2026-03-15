@@ -390,6 +390,20 @@ async function handleAudioUpload(ctx) {
       mimeType = file.mime_type || 'audio/mpeg';
     }
 
+    // Check limite 20 MB di Telegram Bot API
+    const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+    if (file.file_size > MAX_FILE_SIZE) {
+      const fileSizeMB = (file.file_size / (1024 * 1024)).toFixed(1);
+      const uploadUrl = process.env.UPLOAD_PAGE_URL || 'https://vox.ooo.rocks/upload.html';
+      const fullUrl = `${uploadUrl}?name=${encodeURIComponent(ctx.session.name)}&email=${encodeURIComponent(ctx.session.email)}&location=${encodeURIComponent(ctx.session.location)}`;
+      await ctx.reply(
+        `File too large (${fileSizeMB} MB). Telegram limit is 20 MB.\n\n` +
+        `<a href="${fullUrl}">Upload here</a>`,
+        { parse_mode: 'HTML' }
+      );
+      return;
+    }
+
     // Feedback immediato
     const statusMsg = await ctx.reply('Caricamento in corso...');
 
