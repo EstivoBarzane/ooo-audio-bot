@@ -8,7 +8,9 @@
  */
 
 const OpenAI = require('openai');
-const { toFile } = require('openai');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 const { Readable } = require('stream');
 const {
   getAudioBuffer,
@@ -17,8 +19,8 @@ const {
 } = require('./supabase');
 
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // OpenAI limit
-const MAX_RETRIES = 2;
-const RETRY_DELAY_MS = 3000;
+const MAX_RETRIES = 1;
+const RETRY_DELAY_MS = 2000;
 
 let _client = null;
 
@@ -119,27 +121,38 @@ async function callTranscribeAPI(buffer, fileName, language) {
         await sleep(delay);
       }
 
-      const file = await toFile(buffer, fileName, {
-        type: getMimeType(fileName)
-      });
+      const tmpFile = path.join(os.tmpdir(), `vox_${Date.now()}_${fileName}`);
+      fs.writeFileSync(tmpFile, buffer);
 
-      const response = await client.audio.transcriptions.create({
-        model: 'gpt-4o-transcribe',
-        file,
-        language,
-        response_format: 'text'
-      });
+      try {
+        const response = await client.audio.transcriptions.create({
+          model: 'whisper-1',
+          file: fs.createReadStream(tmpFile),
+          language,
+          response_format: 'text'
+        });
 
-      const text = typeof response === 'string' ? response : response.text;
+        const text = typeof response === 'string' ? response : response.text;
 
-      if (!text || text.trim().length === 0) {
-        throw new Error('Transcription returned empty text');
+        if (!text || text.trim().length === 0) {
+          throw new Error('Transcription returned empty text');
+        }
+
+        return text.trim();
+      } finally {
+        // Cleanup temp file
+        try { fs.unlinkSync(tmpFile); } catch (_) {}
       }
-
-      return text.trim();
 
     } catch (err) {
       lastError = err;
+      console.error(`[transcription] API error: ${err.message}`, {
+        status: err.status,
+        code: err.code,
+        type: err.type,
+        cause: err.cause?.message,
+        stack: err.stack?.split('\n').slice(0, 3).join(' | ')
+      });
 
       // Don't retry on client errors (bad file, invalid format)
       if (err.status && err.status >= 400 && err.status < 500 && err.status !== 429) {
