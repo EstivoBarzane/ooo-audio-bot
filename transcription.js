@@ -31,7 +31,7 @@ function getClient() {
     if (!apiKey) {
       throw new Error('OPENAI_API_KEY environment variable is not set');
     }
-    _client = new OpenAI({ apiKey });
+    _client = new OpenAI({ apiKey, timeout: 120000 }); // 2 min timeout
   }
   return _client;
 }
@@ -56,14 +56,18 @@ async function transcribeUpload(uploadId, filePath, fileName, options = {}) {
   });
 
   try {
+    console.log(`[transcription] downloading: ${filePath}`);
     const buffer = await getAudioBuffer(filePath);
+    console.log(`[transcription] downloaded: ${(buffer.length / 1024).toFixed(0)}KB`);
 
     if (buffer.length > MAX_FILE_SIZE_BYTES) {
       const sizeMB = (buffer.length / (1024 * 1024)).toFixed(1);
       throw new Error(`File too large for transcription: ${sizeMB}MB (max 25MB)`);
     }
 
+    console.log(`[transcription] calling OpenAI API...`);
     const text = await callTranscribeAPI(buffer, fileName, language);
+    console.log(`[transcription] API returned ${text.length} chars`);
 
     // Save .txt file to Storage alongside the audio
     const txtFilePath = await uploadTranscriptionFile(filePath, text);
