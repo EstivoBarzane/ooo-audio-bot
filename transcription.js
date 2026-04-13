@@ -8,6 +8,7 @@
  */
 
 const OpenAI = require('openai');
+const { toFile } = require('openai');
 const { Readable } = require('stream');
 const {
   getAudioBuffer,
@@ -114,7 +115,7 @@ async function callTranscribeAPI(buffer, fileName, language) {
         await sleep(delay);
       }
 
-      const file = new File([buffer], fileName, {
+      const file = await toFile(buffer, fileName, {
         type: getMimeType(fileName)
       });
 
