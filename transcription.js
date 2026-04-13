@@ -11,6 +11,7 @@ const OpenAI = require('openai');
 const { Readable } = require('stream');
 const {
   getAudioBuffer,
+  uploadTranscriptionFile,
   updateTranscription
 } = require('./supabase');
 
@@ -63,9 +64,13 @@ async function transcribeUpload(uploadId, filePath, fileName, options = {}) {
 
     const text = await callTranscribeAPI(buffer, fileName, language);
 
+    // Save .txt file to Storage alongside the audio
+    const txtFilePath = await uploadTranscriptionFile(filePath, text);
+
     await updateTranscription(uploadId, {
       status: 'completed',
       text,
+      filePath: txtFilePath,
       transcribedAt: new Date().toISOString(),
       tenantId
     });

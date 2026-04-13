@@ -300,6 +300,34 @@ async function getAudioBuffer(filePath) {
 }
 
 /**
+ * Upload transcription text file to Supabase Storage
+ * @param {string} audioFilePath - Original audio path (used to derive txt path)
+ * @param {string} text - Transcription text
+ * @returns {Promise<string>} Storage path of the .txt file
+ */
+async function uploadTranscriptionFile(audioFilePath, text) {
+  const txtPath = audioFilePath
+    .replace(/^uploads\//, 'transcriptions/')
+    .replace(/\.[^.]+$/, '.txt');
+
+  const buffer = Buffer.from(text, 'utf-8');
+
+  const { error } = await supabase.storage
+    .from('audio-files')
+    .upload(txtPath, buffer, {
+      contentType: 'text/plain; charset=utf-8',
+      upsert: true
+    });
+
+  if (error) {
+    console.error('Error uploading transcription file:', error);
+    throw error;
+  }
+
+  return txtPath;
+}
+
+/**
  * Update transcription data for an upload record
  * @param {string} uploadId - Row ID in audio_uploads
  * @param {Object} updates
@@ -308,6 +336,7 @@ async function getAudioBuffer(filePath) {
  * @param {string} [updates.error] - Error message if failed
  * @param {string} [updates.transcribedAt] - ISO timestamp
  * @param {string} [updates.tenantId] - Tenant context (future use)
+ * @param {string} [updates.filePath] - Storage path of .txt file
  */
 async function updateTranscription(uploadId, updates) {
   const payload = {
@@ -318,6 +347,7 @@ async function updateTranscription(uploadId, updates) {
   if (updates.error !== undefined) payload.transcription_error = updates.error;
   if (updates.transcribedAt) payload.transcribed_at = updates.transcribedAt;
   if (updates.tenantId) payload.tenant_id = updates.tenantId;
+  if (updates.filePath) payload.transcription_file_path = updates.filePath;
 
   const { error } = await supabase
     .from('audio_uploads')
@@ -341,6 +371,7 @@ module.exports = {
   getRecentUploads,
   getAllUploads,
   getAudioBuffer,
+  uploadTranscriptionFile,
   updateTranscription,
   getStorageStats,
   checkStorageAlert,
