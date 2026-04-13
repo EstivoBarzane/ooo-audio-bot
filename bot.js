@@ -15,6 +15,7 @@ const {
   getRecentUploads,
   getStats 
 } = require('./supabase');
+const { transcribeUpload } = require('./transcription');
 
 // Inizializza bot
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN);
@@ -437,6 +438,11 @@ async function handleAudioUpload(ctx) {
       id: uploadRecord.id,
       fileName: fileName,
       filePath: filePath
+    });
+
+    // Fire-and-forget: transcription runs in background
+    transcribeUpload(uploadRecord.id, filePath, fileName).catch(err => {
+      console.error(`[bot] transcription background error: ${err.message}`);
     });
 
     // Conferma con bottoni

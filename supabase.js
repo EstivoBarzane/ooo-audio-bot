@@ -280,6 +280,56 @@ async function getStats() {
   };
 }
 
+/**
+ * Download audio file buffer from Supabase Storage
+ * @param {string} filePath - Path in the audio-files bucket
+ * @returns {Promise<Buffer>}
+ */
+async function getAudioBuffer(filePath) {
+  const { data, error } = await supabase.storage
+    .from('audio-files')
+    .download(filePath);
+
+  if (error) {
+    console.error('Error downloading audio file:', error);
+    throw error;
+  }
+
+  const arrayBuffer = await data.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+/**
+ * Update transcription data for an upload record
+ * @param {string} uploadId - Row ID in audio_uploads
+ * @param {Object} updates
+ * @param {string} updates.status - Transcription status
+ * @param {string} [updates.text] - Transcribed text
+ * @param {string} [updates.error] - Error message if failed
+ * @param {string} [updates.transcribedAt] - ISO timestamp
+ * @param {string} [updates.tenantId] - Tenant context (future use)
+ */
+async function updateTranscription(uploadId, updates) {
+  const payload = {
+    transcription_status: updates.status
+  };
+
+  if (updates.text !== undefined) payload.transcription = updates.text;
+  if (updates.error !== undefined) payload.transcription_error = updates.error;
+  if (updates.transcribedAt) payload.transcribed_at = updates.transcribedAt;
+  if (updates.tenantId) payload.tenant_id = updates.tenantId;
+
+  const { error } = await supabase
+    .from('audio_uploads')
+    .update(payload)
+    .eq('id', uploadId);
+
+  if (error) {
+    console.error('Error updating transcription:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   supabase,
   saveUploadMeta,
@@ -290,6 +340,8 @@ module.exports = {
   getPublicUrl,
   getRecentUploads,
   getAllUploads,
+  getAudioBuffer,
+  updateTranscription,
   getStorageStats,
   checkStorageAlert,
   getStats,
