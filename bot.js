@@ -196,6 +196,69 @@ bot.command('stats', async (ctx) => {
   }
 });
 
+// /transcribeall - Batch transcription of all pending uploads (solo admin)
+bot.command('transcribeall', async (ctx) => {
+  if (String(ctx.from.id) !== String(ADMIN_CHAT_ID)) {
+    return;
+  }
+
+  try {
+    const { supabase } = require('./supabase');
+    const { data: pending, error } = await supabase
+      .from('audio_uploads')
+      .select('id, file_path, file_name')
+      .eq('transcription_status', 'pending')
+      .order('uploaded_at', { ascending: true });
+
+    if (error) throw error;
+
+    if (!pending || pending.length === 0) {
+      await ctx.reply('Nessun audio da trascrivere.');
+      return;
+    }
+
+    await ctx.reply(`Avvio trascrizione di ${pending.length} audio. Ti aggiorno ogni 5...`);
+
+    let completed = 0;
+    let failed = 0;
+
+    for (let i = 0; i < pending.length; i++) {
+      const upload = pending[i];
+      const result = await transcribeUpload(
+        upload.id,
+        upload.file_path,
+        upload.file_name || 'audio.mp3'
+      );
+
+      if (result.status === 'completed') {
+        completed++;
+      } else {
+        failed++;
+      }
+
+      // Progress update every 5 files
+      if ((i + 1) % 5 === 0) {
+        await ctx.reply(`Progresso: ${i + 1}/${pending.length} (ok: ${completed}, err: ${failed})`);
+      }
+
+      // Pause between transcriptions
+      if (i < pending.length - 1) {
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
+    await ctx.reply(
+      `Trascrizione completata!\n\n` +
+      `Totale: ${pending.length}\n` +
+      `Completati: ${completed}\n` +
+      `Errori: ${failed}`
+    );
+  } catch (error) {
+    await ctx.reply(`Errore: ${error.message}`);
+    console.error('[transcribeall]', error);
+  }
+});
+
 // ============================================
 // FLOW CONVERSAZIONALE
 // ============================================
