@@ -1294,7 +1294,7 @@
           <td><span class="file-badge" title="${upload.file_name}">${upload.file_name}</span></td>
           <td>
             ${hasTx 
-              ? `<span class="tx-badge tx-download-btn" data-id="${upload.id}" title="Scarica trascrizione">${icons.download} ${txName}</span>` 
+              ? `<span class="tx-badge tx-download-btn" data-id="${upload.id}" title="${txName}">${icons.download} txt</span>` 
               : `<span class="tx-badge tx-badge-pending">--</span>`}
           </td>
           <td>
@@ -1615,10 +1615,9 @@
     }
 
     function txFileName(upload) {
-      const name = (upload.name || '').replace(/\s+/g, '_');
       const loc = (upload.location || '').replace(/\s+/g, '_').replace(/-/g, '_');
       const date = upload.uploaded_at ? new Date(upload.uploaded_at).toISOString().split('T')[0] : '';
-      return (name + '_' + loc + '_' + date + '.txt').replace(/_{2,}/g, '_');
+      return (loc + '_' + date + '.txt').replace(/_{2,}/g, '_').replace(/^_/, '');
     }
 
     async function downloadTexts(ids) {
