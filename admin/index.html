@@ -484,6 +484,10 @@
       background: transparent;
       cursor: pointer;
       transition: all 0.15s ease;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .tx-badge:hover {
@@ -1258,7 +1262,7 @@
               <th data-sort="uploaded_at" class="${state.sortField === 'uploaded_at' ? 'sorted' : ''}">
                 Data ${state.sortField === 'uploaded_at' ? sortIcon : ''}
               </th>
-              <th style="text-align: right;">Azioni</th>
+
             </tr>
           </thead>
           <tbody>
@@ -1291,7 +1295,7 @@
           <td><strong>${upload.name}</strong></td>
           <td>${upload.email}</td>
           <td><span class="location-badge">${upload.location}</span></td>
-          <td><span class="file-badge" title="${upload.file_name}">${upload.file_name}</span></td>
+          <td><span class="tx-badge audio-download-btn" data-id="${upload.id}" title="${upload.file_name}">${icons.download} ${upload.file_name}</span></td>
           <td>
             ${hasTx 
               ? `<span class="tx-badge tx-download-btn" data-id="${upload.id}" title="${txName}">${icons.download} txt</span>` 
@@ -1303,16 +1307,6 @@
             ${!hasTextNotes && !hasAudioNotes ? '-' : ''}
           </td>
           <td>${date}</td>
-          <td>
-            <div class="actions-cell">
-              <button class="btn btn-icon download-btn" data-id="${upload.id}" title="Scarica audio">
-                ${icons.download}
-              </button>
-              <button class="btn btn-danger btn-icon delete-btn" data-id="${upload.id}" title="Elimina">
-                ${icons.trash}
-              </button>
-            </div>
-          </td>
         </tr>
       `;
     }
@@ -1443,19 +1437,10 @@
       });
       
       // Download buttons
-      document.querySelectorAll('.download-btn').forEach(btn => {
+      document.querySelectorAll('.audio-download-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = btn.dataset.id;
           downloadFiles([id]);
-        });
-      });
-      
-      // Delete buttons
-      document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = btn.dataset.id;
-          state.deleteModal = { open: true, items: [id] };
-          render();
         });
       });
       
